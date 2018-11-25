@@ -1,4 +1,4 @@
-#Random Forest From Scratch w/ Python
+# Random Forest From Scratch w/ Python
 
-####Setup:
+#### Setup:
 `pip install numpy pandas seaborn matplotlib sklearn IPython`
