@@ -1,8 +1,9 @@
 # Submission Files
 data
 
-# PyCharm
+# PyCharm & VS Code
 .idea
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
