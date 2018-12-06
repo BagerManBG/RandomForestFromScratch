@@ -4,41 +4,19 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from pylab import rcParams
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib import rc
-import unittest
+# import seaborn as sns
+# from pylab import rcParams
+# import matplotlib.pyplot as plt
+# import matplotlib.animation as animation
+# from matplotlib import rc
+# import unittest
 import math
 from sklearn import metrics
-from sklearn.tree import export_graphviz
+# from sklearn.tree import export_graphviz
 import IPython, re, os, sys
-
-sns.set(style='whitegrid', palette='muted', font_scale=1.5)
-
-rcParams['figure.figsize'] = 12, 6
-
-RANDOM_SEED = 42
-
-np.random.seed(RANDOM_SEED)
-
-train_csv = 'train/house_prices_train.csv'
-test_csv = 'train/house_prices_test.csv'
-
-df_train = pd.read_csv(train_csv)
-df_test = pd.read_csv(test_csv)
-
-X = df_train[['OverallQual', 'GrLivArea', 'GarageCars']]
-y = df_train['SalePrice']
-
 from sklearn.metrics import mean_squared_error
 from math import sqrt
-
-
-def rmse(h, y):
-  return sqrt(mean_squared_error(h, y))
-
+# from scipy.stats import mode
 
 # from sklearn.ensemble import RandomForestRegressor
 #
@@ -49,6 +27,9 @@ def rmse(h, y):
 # metrics.r2_score(y, preds)
 #
 # rmse(preds, y)
+
+def rmse(h, y):
+  return sqrt(mean_squared_error(h, y))
 
 class Node:
   def __init__(self, x, y, idxs, min_leaf=5):
@@ -92,9 +73,9 @@ class Node:
         self.score = curr_score
         self.split = x[r]
 
-  @property
-  def split_name(self):
-    return self.x.columns[self.var_idx]
+  # @property
+  # def split_name(self):
+  #   return self.x.columns[self.var_idx]
 
   @property
   def split_col(self):
@@ -104,11 +85,11 @@ class Node:
   def is_leaf(self):
     return self.score == float('inf')
 
-  def __repr__(self):
-    s = f'n: {self.n}; val:{self.val}'
-    if not self.is_leaf:
-      s += f'; score:{self.score}; split:{self.split}; var:{self.split_name}'
-    return s
+  # def __repr__(self):
+  #   s = f'n: {self.n}; val:{self.val}'
+  #   if not self.is_leaf:
+  #     s += f'; score:{self.score}; split:{self.split}; var:{self.split_name}'
+  #   return s
 
   def predict(self, x):
     return np.array([self.predict_row(xi) for xi in x])
@@ -117,7 +98,6 @@ class Node:
     if self.is_leaf: return self.val
     t = self.lhs if xi[self.var_idx] <= self.split else self.rhs
     return t.predict_row(xi)
-
 
 class DecisionTreeRegressor:
   def fit(self, X, y, idxs, min_leaf=5):
@@ -129,7 +109,7 @@ class DecisionTreeRegressor:
 
 # Random Forest
 class RandomForest():
-    def __init__(self, x, y, n_trees, sample_sz, depth=10, min_leaf=5):
+    def __init__(self, x, y, n_trees, sample_sz, depth=3, min_leaf=3):
         self.x = x
         self.y = y
         self.sample_sz = sample_sz
@@ -148,27 +128,37 @@ class RandomForest():
         # print(x)
         tree.fit(x, y, idxs, self.min_leaf)
         return tree
-        
+
     def predict(self, x):
         return np.mean([t.predict(x) for t in self.trees], axis=0)
 
-forest = RandomForest(X, y, n_trees=150, sample_sz=399, depth=5, min_leaf=5)
+RANDOM_SEED = 42
+
+np.random.seed(RANDOM_SEED)
+
+train_csv = 'train/house_prices_train.csv'
+test_csv = 'train/house_prices_test.csv'
+
+df_train = pd.read_csv(train_csv)
+df_test = pd.read_csv(test_csv)
+
+X = df_train[['OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea', 'TotalBsmtSF', '1stFlrSF', 'FullBath']]
+y = df_train['SalePrice']
+
+forest = RandomForest(X, y, n_trees=1000, sample_sz=10, depth=7, min_leaf=5)
 preds = forest.predict(X)
 
-# regressor = DecisionTreeRegressor().fit(X, y)
-# preds = regressor.predict(X)
-
-metrics.r2_score(y, preds)
+# metrics.r2_score(y, preds)
 err = rmse(preds, y)
 
 print(err)
 
-X_test = df_test[['OverallQual', 'GrLivArea', 'GarageCars']]
-# pred_test = regressor.predict(X_test)
-pred_test = forest.predict(X_test)
-submission = pd.DataFrame({'Id': df_test.Id, 'SalePrice': pred_test})
-
-script_dir = os.path.abspath(os.path.dirname(sys.argv[0]) or '.')
-csv_path = os.path.join(script_dir, 'data/submission.csv')
-
-submission.to_csv(csv_path, index=False)
+# X_test = df_test[['OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea', 'TotalBsmtSF', '1stFlrSF', 'FullBath']]
+# # pred_test = regressor.predict(X_test)
+# pred_test = forest.predict(X_test)
+# submission = pd.DataFrame({'Id': df_test.Id, 'SalePrice': pred_test})
+#
+# script_dir = os.path.abspath(os.path.dirname(sys.argv[0]) or '.')
+# csv_path = os.path.join(script_dir, 'data/submission.csv')
+#
+# submission.to_csv(csv_path, index=False)
