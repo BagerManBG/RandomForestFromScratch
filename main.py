@@ -32,26 +32,26 @@ def rmse(h, y):
   return sqrt(mean_squared_error(h, y))
 
 class Node:
-  def __init__(self, x, y, idxs, min_leaf=5):
+  def __init__(self, x, y, idxs, f_idxs, min_leaf=5):
     self.x = x
     self.y = y
     self.idxs = idxs
     self.idxs_native = np.array(np.arange(len(self.idxs)))
     self.min_leaf = min_leaf
     self.row_count = len(idxs)
-    self.col_count = x.shape[1]
+    self.f_idxs = f_idxs
     self.val = np.mean(y[idxs])
     self.score = float('inf')
     self.find_varsplit()
 
   def find_varsplit(self):
-    for c in range(self.col_count): self.find_better_split(c)
+    for c in self.f_idxs: self.find_better_split(c)
     if self.is_leaf: return
     x = self.split_col
     lhs = np.nonzero(x <= self.split)[0]  # lhs indexes
     rhs = np.nonzero(x > self.split)[0]  # rhs indexes
-    self.lhs = Node(self.x, self.y, self.idxs[lhs])
-    self.rhs = Node(self.x, self.y, self.idxs[rhs])
+    self.lhs = Node(self.x, self.y, self.idxs[lhs], self.f_idxs, self.min_leaf)
+    self.rhs = Node(self.x, self.y, self.idxs[rhs], self.f_idxs, self.min_leaf)
 
   def find_better_split(self, var_idx):
     x, y = self.x.values[self.idxs_native, var_idx], self.y[self.idxs]
@@ -100,8 +100,8 @@ class Node:
     return t.predict_row(xi)
 
 class DecisionTreeRegressor:
-  def fit(self, X, y, idxs, min_leaf=5):
-    self.dtree = Node(X, y, idxs, min_leaf)
+  def fit(self, X, y, idxs, f_idxs, min_leaf=5):
+    self.dtree = Node(X, y, idxs, f_idxs, min_leaf)
     return self
 
   def predict(self, X):
@@ -109,16 +109,17 @@ class DecisionTreeRegressor:
 
 # Random Forest
 class RandomForest():
-    def __init__(self, x, y, n_trees, sample_sz, depth=3, min_leaf=3):
+    def __init__(self, x, y, n_trees, n_features, sample_sz, min_leaf=3):
         self.x = x
         self.y = y
         self.sample_sz = sample_sz
-        self.depth = depth
+        self.n_features = n_features
         self.min_leaf = min_leaf
         self.trees = [self.create_tree() for i in range(n_trees)]
 
     def create_tree(self):
         idxs = np.random.permutation(len(self.y))[:self.sample_sz]
+        f_idxs = np.random.permutation(self.x.iloc[idxs].shape[1])[:self.n_features]
         tree = DecisionTreeRegressor()
         x = self.x.iloc[idxs]
         y = self.y[idxs]
@@ -126,7 +127,7 @@ class RandomForest():
         # print(x.shape)
         # print(len(idxs))
         # print(x)
-        tree.fit(x, y, idxs, self.min_leaf)
+        tree.fit(x, y, idxs, f_idxs, self.min_leaf)
         return tree
 
     def predict(self, x):
@@ -142,10 +143,13 @@ test_csv = 'train/house_prices_test.csv'
 df_train = pd.read_csv(train_csv)
 df_test = pd.read_csv(test_csv)
 
-X = df_train[['OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea', 'TotalBsmtSF', '1stFlrSF', 'FullBath']]
+X = df_train[['OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea', 'TotalBsmtSF']]
 y = df_train['SalePrice']
 
-forest = RandomForest(X, y, n_trees=1000, sample_sz=10, depth=7, min_leaf=5)
+# Best so far...
+# forest = RandomForest(X, y, n_trees=100, n_features=4, sample_sz=50, min_leaf=2) # 45714
+
+forest = RandomForest(X, y, n_trees=100, n_features=4, sample_sz=50, min_leaf=2)
 preds = forest.predict(X)
 
 # metrics.r2_score(y, preds)
@@ -153,7 +157,7 @@ err = rmse(preds, y)
 
 print(err)
 
-# X_test = df_test[['OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea', 'TotalBsmtSF', '1stFlrSF', 'FullBath']]
+# X_test = df_test[['OverallQual', 'GrLivArea', 'GarageCars', 'GarageArea', 'TotalBsmtSF']]
 # # pred_test = regressor.predict(X_test)
 # pred_test = forest.predict(X_test)
 # submission = pd.DataFrame({'Id': df_test.Id, 'SalePrice': pred_test})
